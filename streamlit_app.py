@@ -3,9 +3,11 @@ import json
 import pandas as pd
 import plotly.express as px
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime, timedelta
 from statsmodels.formula.api import ols
-
+import statsmodels.api as sm
 
 ##################
 # DATA FUNCTIONS #
@@ -142,7 +144,6 @@ with tab1:
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(width=1100, height=800, margin={"r":0,"t":40,"l":0,"b":0})
     st.plotly_chart(fig, use_container_width=False)
 
     #####################
@@ -171,6 +172,9 @@ with tab1:
 
     # Pas het model toe op de gefilterde 'modeldata'
     model = ols('Ziekenhuisopnames ~ Besmettingen + Vaccinatiegraad_volledig', data=modeldata).fit()
+
+    # R-kwadraat waarde weergeven
+    st.write("Model R-kwadraat:", model.rsquared)
 
     # Plotly grafiek voor relatieve variantprevalentie
     fig = px.line(variant_prevalence, x='Date_of_statistics_week_start', y='Relative_Prevalence', color='Variant_name',
@@ -202,7 +206,8 @@ with tab1:
     effectivity_percentage = (reduction / predicted_ziekenhuisopnames_baseline) * 100 if predicted_ziekenhuisopnames_baseline != 0 else 0
 
     # Weergeven van voorspellingresultaten onder de prevalentie grafiek
-    st.markdown("### Voorspelling ziekenhuisopnames")
+    st.markdown("### Analyse van Vaccinatie-effectiviteit")
+    # R-kwadraat waarde weergeven
     st.write("Model R-kwadraat:", model.rsquared)
     # Verticaal weergegeven informatie als grote, horizontale kolommen
     col1, col2, col3, col4 = st.columns(4)
@@ -210,6 +215,45 @@ with tab1:
     col2.metric("Voorspelde ziekenhuisopnames (vaccinatiegraad 5%)", f"{round(predicted_ziekenhuisopnames_baseline, 2)}")
     col3.metric("Vermindering in ziekenhuisopnames", f"{round(reduction, 2)}")
     col4.metric("Effectiviteit van vaccin", f"{round(effectivity_percentage, 2)}%")
+    if st.button("Toon modeldiagnose plots"):
+
+    # Residuals Plot
+    residuals = model.resid
+    fitted_values = model.fittedvalues
+
+    # Create three columns for the plots
+    col1, col2, col3 = st.columns(3)
+
+    # Residuals Distribution Plot
+    with col1:
+        st.subheader("Residuals Distribution")
+        fig_residuals, ax_residuals = plt.subplots()
+        sns.histplot(residuals, kde=True, ax=ax_residuals)
+        ax_residuals.set_title("Residuals Distribution")
+        ax_residuals.set_xlabel("Residuals")
+        ax_residuals.set_ylabel("Frequency")
+        st.pyplot(fig_residuals)
+
+    # Q-Q Plot
+    with col2:
+        st.subheader("Q-Q Plot")
+        fig_qq, ax_qq = plt.subplots()
+        sm.qqplot(residuals, line="45", ax=ax_qq)
+        ax_qq.set_title("Q-Q Plot of Residuals")
+        st.pyplot(fig_qq)
+
+    # Fitted vs Residuals Plot
+    with col3:
+        st.subheader("Fitted vs Residuals")
+        fig_fitted_residuals, ax_fitted_residuals = plt.subplots()
+        ax_fitted_residuals.scatter(fitted_values, residuals, alpha=0.5)
+        ax_fitted_residuals.axhline(0, linestyle='--', color='red')
+        ax_fitted_residuals.set_xlabel("Fitted Values")
+        ax_fitted_residuals.set_ylabel("Residuals")
+        ax_fitted_residuals.set_title("Fitted vs Residuals Plot")
+        st.pyplot(fig_fitted_residuals)
+
+# Continue with other sections if needed
 
 
 ###################################
@@ -232,43 +276,7 @@ with tab2:
         df = pd.read_csv(f'intensiteit{year}_weekly.csv')
         return df
 
-    df_grouped = pd.read_csv('intensiteit_daily_average.csv')
 
-    #data per jaar filteren
-    data = {
-        2019: df_grouped[df_grouped['jaar'] == 2019],
-        2020: df_grouped[df_grouped['jaar'] == 2020],
-        2021: df_grouped[df_grouped['jaar'] == 2021],
-        2022: df_grouped[df_grouped['jaar'] == 2022],
-        2023: df_grouped[df_grouped['jaar'] == 2023],
-        2024: df_grouped[df_grouped['jaar'] == 2024]}
-    
-    st.write('''Met behulp van open datasets van NDW kan er inzicht verkregen worden in de intensiteit van verkeer op de A10 in Amsterdam. 
-            In de onderstaande box kan gekozen worden tussen verschillende jaren. ''')
-    
-    #selectbox maken om het jaar te selecteren
-    year = st.selectbox("Selecteer een jaar", range(2019,2025))
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
-    
-    data_aggregated = data[year].groupby('dag', as_index=False).agg({'gem_intensiteit': 'sum'})
-    weekFig = px.bar(data_aggregated, 
-                     x='dag', 
-                     y='gem_intensiteit',
-                     title=f"Intensiteit verkeerstromen in {year} (per week)", 
-                     labels={'dag': 'Dag van de week', 'gem_intensiteit': 'Aantal'}, 
-                     color='dag',
-                     color_discrete_sequence=['steelblue'],
-                     template='plotly_white', 
-                     category_orders={'dag': day_order})
-    
-    weekFig.update_traces(marker=dict(line=dict(color='black', width=0.5), opacity=0.75))
-    weekFig.update_xaxes(showgrid=True, gridcolor='lightgrey')
-    weekFig.update_yaxes(showgrid=True, gridcolor='lightgrey')
-    weekFig.update_layout(xaxis_title='Dag van de week', yaxis_title='Aantal', hovermode='x unified')
-    
-    #figuur laten zien
-    st.plotly_chart(weekFig, use_container_width=True)
     ###################################
     # PLOT VAN WEEKDAG PER JAAR #######
     ###################################
@@ -306,4 +314,4 @@ with tab2:
 
     st.plotly_chart(dayFig, use_container_width=True)
 
-# Continue with other sections if needed
+    # Button to display diagnostic plots
