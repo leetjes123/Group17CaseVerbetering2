@@ -202,7 +202,7 @@ with tab1:
     effectivity_percentage = (reduction / predicted_ziekenhuisopnames_baseline) * 100 if predicted_ziekenhuisopnames_baseline != 0 else 0
 
     # Weergeven van voorspellingresultaten onder de prevalentie grafiek
-    st.markdown("### Analyse van Vaccinatie-effectiviteit")
+    st.markdown("### Voorspelling ziekenhuisopnames")
     st.write("Model R-kwadraat:", model.rsquared)
     # Verticaal weergegeven informatie als grote, horizontale kolommen
     col1, col2, col3, col4 = st.columns(4)
