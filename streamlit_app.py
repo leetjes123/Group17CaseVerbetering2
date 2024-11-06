@@ -142,6 +142,7 @@ with tab1:
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
+    fig.update_layout(width=1300, height=1000, margin={"r":0,"t":40,"l":0,"b":0})
     st.plotly_chart(fig, use_container_width=False)
 
     #####################
