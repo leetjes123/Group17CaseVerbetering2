@@ -8,7 +8,21 @@ import seaborn as sns
 from datetime import datetime, timedelta
 from statsmodels.formula.api import ols
 
+@st.cache_data
+def load_variant_data():
+    data = pd.read_csv('COVID-19_varianten.csv', delimiter=';')
+    data['Date_of_statistics_week_start'] = pd.to_datetime(data['Date_of_statistics_week_start'])
+    data = data[(data['Date_of_statistics_week_start'] >= "2020-12-28") & 
+                (data['Date_of_statistics_week_start'] <= "2023-03-31")]
 
+    # Aggregate variant prevalence data
+    variant_prevalence = data.groupby(['Date_of_statistics_week_start', 'Variant_name'])['Variant_cases'].sum().reset_index()
+    
+    # Calculate relative prevalence by week
+    total_cases_per_week = variant_prevalence.groupby('Date_of_statistics_week_start')['Variant_cases'].transform('sum')
+    variant_prevalence['Relative_Prevalence'] = (variant_prevalence['Variant_cases'] / total_cases_per_week) * 100
+
+    return data, variant_prevalence
 
 @st.cache_data
 def load_covid_modeldata():
@@ -63,14 +77,13 @@ def load_covid_mapdata():
 mapdata, geojson = load_covid_mapdata()
 
 # Streamlit Sidebar UI for date selection
-st.sidebar.header("Kaart opties")
 start_date = st.sidebar.slider(
     "Selecteer een datum", 
     min_value=datetime(2020, 12, 28), 
-    max_value=datetime(2023, 2, 28),  # Limit to ensure a full month can be selected
-    value=datetime(2020, 12, 28)
+    max_value=datetime(2023, 2, 28) - timedelta(days=6),  # Limit to ensure a full week can be selected
+    value=datetime(2020, 12, 28),
+    step=timedelta(days=7)
 )
-
 # Define the end date as one month after the selected start date
 end_date = start_date + timedelta(days=30)
 
@@ -150,42 +163,52 @@ st.plotly_chart(fig, use_container_width=False)
 
 modeldata = load_covid_modeldata()
 
+variant_data, variant_prevalence, variant_pivot = load_variant_data()
+
+# Variant prevalence periods
+variant_periods = {
+    "Alpha": ("2020-12-28", "2021-06-21"),
+    "Delta": ("2021-06-28", "2021-12-20"),
+    "Omicron": ("2021-12-27", "2023-03-27")
+}
+
+# Variant selection in sidebar
+st.sidebar.header("Model Instellingen")
+variant_option = st.sidebar.selectbox("Kies een variant", list(variant_periods.keys()))
+
+# Filter 'modeldata' based on the selected variant's time period
+start_date, end_date = variant_periods[variant_option]
+modeldata = modeldata[(modeldata['Datum'] >= start_date) & 
+                          (modeldata['Datum'] <= end_date)]
+
+# Fit the model using the filtered 'modeldata'
 model = ols('Ziekenhuisopnames ~ Besmettingen + Vaccinatiegraad_volledig', data=modeldata).fit()
 
+# Show R-squared value
+st.write("Model R-squared:", model.rsquared)
 
-# Modelparameters en samenvatting bekijken
-st.write("Model Parameters:")
-st.write(model.params)
-st.write("Model Samenvatting:")
-st.write(model.summary())
+# Plotly graph for variant prevalence
+fig = px.line(variant_prevalence, x='Date_of_statistics_week_start', y='Variant_cases', color='Variant_name',
+              title="Prevalence of COVID-19 Variants Over Time")
+fig.update_layout(xaxis_title="Date", yaxis_title="Cases", legend_title="Variant Name")
 
-# Voorspellingen maken op basis van het model
-explanatory_data = pd.DataFrame({
-    'Besmettingen': np.linspace(modeldata['Besmettingen'].min(), modeldata['Besmettingen'].max(), 100),
-    'Vaccinatiegraad_volledig': [0] * 100,
-    #'Lockdown': [1] * 100  # Bijvoorbeeld: tijdens een lockdown
-})
+# Add annotations for dominance periods
+dominant_periods = variant_pivot['Most_Prevalent_Variant'].ne(variant_pivot['Most_Prevalent_Variant'].shift()).cumsum()
+for i, variant in variant_pivot.groupby(['Most_Prevalent_Variant', dominant_periods]):
+    start = variant.index[0]
+    end = variant.index[-1]
+    fig.add_vrect(x0=start, x1=end, fillcolor="LightSalmon", opacity=0.3, line_width=0)
 
-# Voorspelde ziekenhuisopnames toevoegen aan explanatory_data
-explanatory_data['Ziekenhuisopnames'] = model.predict(explanatory_data)
+st.plotly_chart(fig, use_container_width=True)
 
-# Resultaten tonen in Streamlit
-st.write("Voorspellingen op basis van het model:")
-st.write(explanatory_data)
+# Additional UI elements for predictions as before
+st.sidebar.write("Set inputs for predictions")
+vaccinatiegraad_input = st.sidebar.number_input("Vaccinatiegraad (Volledig):", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
+besmettingen_input = st.sidebar.slider("Aantal Besmettingen:", min_value=int(modeldata['Besmettingen'].min()), max_value=int(modeldata['Besmettingen'].max()), value=int(modeldata['Besmettingen'].median()), step=10)
 
-# Residuen visualiseren
-st.write("Residuen Plot:")
-residuals = model.resid
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.histplot(residuals, kde=True, ax=ax)
-plt.xlabel('Residuen')
-plt.title('Verdeling van de Residuen')
-st.pyplot(fig)
+# Prepare data for prediction
+input_data = pd.DataFrame({'Besmettingen': [besmettingen_input], 'Vaccinatiegraad_volledig': [vaccinatiegraad_input]})
+predicted_ziekenhuisopnames = model.predict(input_data)[0]
 
-# Visualisatie van voorspellingen
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.lineplot(data=explanatory_data, x='Besmettingen', y='Ziekenhuisopnames', ax=ax, label='Voorspelde Ziekenhuisopnames', color='blue')
-plt.xlabel('Aantal Besmettingen')
-plt.ylabel('Aantal Ziekenhuisopnames')
-plt.title('Voorspelde Ziekenhuisopnames op basis van Besmettingen, Vaccinatiegraad, en Lockdown')
-st.pyplot(fig)
+# Display the prediction result
+st.write("Verwachte Aantal Ziekenhuisopnames:", round(predicted_ziekenhuisopnames))
