@@ -234,7 +234,43 @@ with tab2:
         df = pd.read_csv(f'intensiteit{year}_weekly.csv')
         return df
 
+    df_grouped = pd.read_csv('intensiteit_daily_average.csv')
 
+    #data per jaar filteren
+    data = {
+        2019: df_grouped[df_grouped['jaar'] == 2019],
+        2020: df_grouped[df_grouped['jaar'] == 2020],
+        2021: df_grouped[df_grouped['jaar'] == 2021],
+        2022: df_grouped[df_grouped['jaar'] == 2022],
+        2023: df_grouped[df_grouped['jaar'] == 2023],
+        2024: df_grouped[df_grouped['jaar'] == 2024]}
+    
+    st.write('''Met behulp van open datasets van NDW kan er inzicht verkregen worden in de intensiteit van verkeer op de A10 in Amsterdam. 
+            In de onderstaande box kan gekozen worden tussen verschillende jaren. ''')
+    
+    #selectbox maken om het jaar te selecteren
+    year = st.selectbox("Selecteer een jaar", range(2019,2025))
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    
+    
+    data_aggregated = data[year].groupby('dag', as_index=False).agg({'gem_intensiteit': 'sum'})
+    weekFig = px.bar(data_aggregated, 
+                     x='dag', 
+                     y='gem_intensiteit',
+                     title=f"Intensiteit verkeerstromen in {year} (per week)", 
+                     labels={'dag': 'Dag van de week', 'gem_intensiteit': 'Aantal'}, 
+                     color='dag',
+                     color_discrete_sequence=['steelblue'],
+                     template='plotly_white', 
+                     category_orders={'dag': day_order})
+    
+    weekFig.update_traces(marker=dict(line=dict(color='black', width=0.5), opacity=0.75))
+    weekFig.update_xaxes(showgrid=True, gridcolor='lightgrey')
+    weekFig.update_yaxes(showgrid=True, gridcolor='lightgrey')
+    weekFig.update_layout(xaxis_title='Dag van de week', yaxis_title='Aantal', hovermode='x unified')
+    
+    #figuur laten zien
+    st.plotly_chart(weekFig, use_container_width=True)
     ###################################
     # PLOT VAN WEEKDAG PER JAAR #######
     ###################################
