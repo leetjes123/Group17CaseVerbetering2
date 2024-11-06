@@ -172,9 +172,6 @@ with tab1:
     # Pas het model toe op de gefilterde 'modeldata'
     model = ols('Ziekenhuisopnames ~ Besmettingen + Vaccinatiegraad_volledig', data=modeldata).fit()
 
-    # R-kwadraat waarde weergeven
-    st.write("Model R-kwadraat:", model.rsquared)
-
     # Plotly grafiek voor relatieve variantprevalentie
     fig = px.line(variant_prevalence, x='Date_of_statistics_week_start', y='Relative_Prevalence', color='Variant_name',
                 title="Relatieve prevalentie van COVID-19-varianten in de tijd")
@@ -206,7 +203,7 @@ with tab1:
 
     # Weergeven van voorspellingresultaten onder de prevalentie grafiek
     st.markdown("### Analyse van Vaccinatie-effectiviteit")
-
+    st.write("Model R-kwadraat:", model.rsquared)
     # Verticaal weergegeven informatie als grote, horizontale kolommen
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Voorspelde ziekenhuisopnames (geselecteerde vaccinatiegraad)", f"{round(predicted_ziekenhuisopnames_selected, 2)}", "bij vaccinatiegraad: " + str(vaccinatiegraad_input) + "%")
