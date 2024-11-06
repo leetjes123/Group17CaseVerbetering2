@@ -216,42 +216,42 @@ with tab1:
     col3.metric("Vermindering in ziekenhuisopnames", f"{round(reduction, 2)}")
     col4.metric("Effectiviteit van vaccin", f"{round(effectivity_percentage, 2)}%")
     if st.button("Toon modeldiagnose plots"):
-
-    # Residuals Plot
-    residuals = model.resid
-    fitted_values = model.fittedvalues
-
-    # Create three columns for the plots
-    col1, col2, col3 = st.columns(3)
-
-    # Residuals Distribution Plot
-    with col1:
-        st.subheader("Residuals Distribution")
-        fig_residuals, ax_residuals = plt.subplots()
-        sns.histplot(residuals, kde=True, ax=ax_residuals)
-        ax_residuals.set_title("Residuals Distribution")
-        ax_residuals.set_xlabel("Residuals")
-        ax_residuals.set_ylabel("Frequency")
-        st.pyplot(fig_residuals)
-
-    # Q-Q Plot
-    with col2:
-        st.subheader("Q-Q Plot")
-        fig_qq, ax_qq = plt.subplots()
-        sm.qqplot(residuals, line="45", ax=ax_qq)
-        ax_qq.set_title("Q-Q Plot of Residuals")
-        st.pyplot(fig_qq)
-
-    # Fitted vs Residuals Plot
-    with col3:
-        st.subheader("Fitted vs Residuals")
-        fig_fitted_residuals, ax_fitted_residuals = plt.subplots()
-        ax_fitted_residuals.scatter(fitted_values, residuals, alpha=0.5)
-        ax_fitted_residuals.axhline(0, linestyle='--', color='red')
-        ax_fitted_residuals.set_xlabel("Fitted Values")
-        ax_fitted_residuals.set_ylabel("Residuals")
-        ax_fitted_residuals.set_title("Fitted vs Residuals Plot")
-        st.pyplot(fig_fitted_residuals)
+    
+        # Residuals Plot
+        residuals = model.resid
+        fitted_values = model.fittedvalues
+    
+        # Create three columns for the plots
+        col1, col2, col3 = st.columns(3)
+    
+        # Residuals Distribution Plot
+        with col1:
+            st.subheader("Residuals Distribution")
+            fig_residuals, ax_residuals = plt.subplots()
+            sns.histplot(residuals, kde=True, ax=ax_residuals)
+            ax_residuals.set_title("Residuals Distribution")
+            ax_residuals.set_xlabel("Residuals")
+            ax_residuals.set_ylabel("Frequency")
+            st.pyplot(fig_residuals)
+    
+        # Q-Q Plot
+        with col2:
+            st.subheader("Q-Q Plot")
+            fig_qq, ax_qq = plt.subplots()
+            sm.qqplot(residuals, line="45", ax=ax_qq)
+            ax_qq.set_title("Q-Q Plot of Residuals")
+            st.pyplot(fig_qq)
+    
+        # Fitted vs Residuals Plot
+        with col3:
+            st.subheader("Fitted vs Residuals")
+            fig_fitted_residuals, ax_fitted_residuals = plt.subplots()
+            ax_fitted_residuals.scatter(fitted_values, residuals, alpha=0.5)
+            ax_fitted_residuals.axhline(0, linestyle='--', color='red')
+            ax_fitted_residuals.set_xlabel("Fitted Values")
+            ax_fitted_residuals.set_ylabel("Residuals")
+            ax_fitted_residuals.set_title("Fitted vs Residuals Plot")
+            st.pyplot(fig_fitted_residuals)
 
 # Continue with other sections if needed
 
